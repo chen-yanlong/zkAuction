@@ -3,7 +3,6 @@ pragma solidity >=0.8.0;
 
 import "@zk-kit/incremental-merkle-tree.sol/IncrementalBinaryTree.sol";
 
-// Please note that you should adjust the length of the inputs
 interface IVerifier {
     function verifyProof(
         uint256[2] memory a,
@@ -17,13 +16,15 @@ contract Auction {
     using IncrementalBinaryTree for IncrementalTreeData;
 
     struct Proof {
-        
+        uint256[2] a;
+        uint256[2][2] b;
+        uint256[2] c;
     }
 
     event TreeCreated(bytes32 id, uint256 depth);
     event LeafInserted(uint256 leaf, uint256 root);
     event Start(uint256 startTime, uint256 endTime);
-    event Bid(address bidder, bytes32 encryptedData);
+    event Bid(address bidder, uint256 encryptedData);
     event End();
     event Tally(address winner);
 
@@ -38,9 +39,9 @@ contract Auction {
 
     //merkle tree
     mapping(uint256 => address) public bidder; 
-    mapping(uint256 => bytes32) public leaves; 
+    mapping(uint256 => uint256) public leaves; 
     uint256 public leafCount = 0;
-    bytes32 public root;
+    uint256 public root;
     IncrementalTreeData public tree;
 
     //verifier
@@ -65,7 +66,7 @@ contract Auction {
         emit Start(block.timestamp, endTime);
     }
 
-    function bid(bytes32 _encryptedBid) public {
+    function bid(uint256 _encryptedBid) public {
         require(block.timestamp < endTime, "Bidding time has ended.");
         bidder[leafCount] = msg.sender;
         leaves[leafCount] = _encryptedBid;
@@ -76,29 +77,30 @@ contract Auction {
     }
 
 
-    function endAuction(bytes32 _winningProof, address _winner) public {
+    function endAuction() public returns (uint256){
         require(block.timestamp >= endTime, "Bidding time not yet ended.");
         require(!ended, "Auction already ended.");
         
         root = tree.root;
         ended = true;
         emit End();
+        return root;
     }
 
 
-    function tally(uint256[3] memory publicSignals, Proof memory proof, uint256 winnerIdx) public {
-        require(msg.sender == _owner, "Only owner can tally.");
-        bool result = IVerifier(verifier).verifyProof(
-            proof.a,
-            proof.b,
-            proof.c,
-            publicSignals
-        );
+    // function tally(uint256[3] memory publicSignals, Proof memory proof, uint256 winnerIdx) public {
+    //     require(msg.sender == _owner, "Only owner can tally.");
+    //     bool result = IVerifier(verifier).verifyProof(
+    //         proof.a,
+    //         proof.b,
+    //         proof.c,
+    //         publicSignals
+    //     );
         
-        require(result == 1, "Invalid proof.");
+    //     require(result == true, "Invalid proof.");
 
-        winner = bidder[winnerIdx];
-    }
+    //     winner = bidder[winnerIdx];
+    // }
 
 
 }
