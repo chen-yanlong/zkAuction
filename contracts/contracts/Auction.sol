@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity >=0.8.0;
 
+import "./PoseidonT3.sol";
+
 // Please note that you should adjust the length of the inputs
 interface IVerifier {
     function verifyProof(
@@ -78,20 +80,18 @@ contract Auction {
     }
 
 
-    // function tally() public {
-    //     // The proof that the winning calculation is correct is verified here
-    //     // This could involve zk-SNARK verification
-    //     require(verifyWinningProof(_winningProof), "Invalid proof.");
+    function tally(uint256[3] memory publicSignals, Proof memory proof) public {
+        bool result = IVerifier(verifier).verifyProof(
+            proof.a,
+            proof.b,
+            proof.c,
+            publicSignals
+        );
+        
+        require(verify(_winningProof), "Invalid proof.");
 
-    //     winner = _winner;
-    // }
-
-
-
-
-
-
-
+        winner = _winner;
+    }
 
 
     /**
