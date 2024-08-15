@@ -1,7 +1,8 @@
-//SPDX-License-Identifier: GPL-3.0-or-later
+/// SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
 import "@zk-kit/incremental-merkle-tree.sol/IncrementalBinaryTree.sol";
+import { Utilities } from "./Utilities.sol";
 
 interface IVerifier {
     function verifyProof(
@@ -12,7 +13,7 @@ interface IVerifier {
     ) external view returns (bool r);
 }
 
-contract Auction {
+contract Auction is Utilities {
     using IncrementalBinaryTree for IncrementalTreeData;
 
     struct Proof {
@@ -38,8 +39,8 @@ contract Auction {
     uint256 public endTime;
 
     //merkle tree
-    mapping(uint256 => address) public bidder; 
-    mapping(uint256 => uint256) public leaves; 
+    mapping(uint256 => address) public bidder; //idx to bidder address
+    mapping(uint256 => Message) private bids;  //idx to encrypted data
     uint256 public leafCount = 0;
     uint256 public root;
     IncrementalTreeData public tree;
@@ -48,10 +49,11 @@ contract Auction {
     address public immutable verifier;
     
 
-    constructor(address verifier_, uint256 duration_, uint256 treeDepth_) {
+    // constructor(address verifier_, uint256 duration_, uint256 treeDepth_) {
+    constructor(uint256 duration_, uint256 treeDepth_) {
         tree.init(treeDepth_, 0);
         
-        verifier = verifier_;
+        // verifier = verifier_;
         _owner = msg.sender;
         duration = duration_;
     }
@@ -66,14 +68,15 @@ contract Auction {
         emit Start(block.timestamp, endTime);
     }
 
-    function bid(uint256 _encryptedBid) public {
+    function bid(Message memory _encryptedBid) public {
         require(block.timestamp < endTime, "Bidding time has ended.");
         bidder[leafCount] = msg.sender;
-        leaves[leafCount] = _encryptedBid;
+        bids[leafCount] = _encryptedBid;
         leafCount++;
-        tree.insert(_encryptedBid); 
-        emit Bid(msg.sender, _encryptedBid);
-        emit LeafInserted(_encryptedBid, tree.root);
+        uint256 leaf = hash4(_encryptedBid.data);
+        tree.insert(leaf); 
+        emit Bid(msg.sender, leaf);
+        emit LeafInserted(leaf, tree.root);
     }
 
 
@@ -101,6 +104,10 @@ contract Auction {
 
     //     winner = bidder[winnerIdx];
     // }
+
+    function getBidData(uint256 idx) public view returns (Message memory) {
+        return bids[idx];
+    }
 
 
 }
